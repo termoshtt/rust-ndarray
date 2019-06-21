@@ -31,10 +31,18 @@ addons:
       - libssl-dev
       - libopenblas-dev
       - gfortran
+before_cache: |
+  if [[ "$TRAVIS_RUST_VERSION" == nightly ]]; then
+    RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin -f
+  fi
 before_script:
   - rustup component add rustfmt
-  - '[ "$TRAVIS_RUST_VERSION" != stable ] || cargo install cargo-tarpaulin'
 script:
   - |
       cargo fmt --all -- --check &&
       ./scripts/all-tests.sh "$FEATURES" "$IS_NIGHTLY"
+after_success: |
+  if [[ "$TRAVIS_RUST_VERSION" == nightly ]]; then
+    cargo tarpaulin --run-types Tests Doctests --out Xml
+    bash <(curl -s https://codecov.io/bash)
+  fi
